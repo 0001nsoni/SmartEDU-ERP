@@ -3,7 +3,9 @@ import {
   createRoute,
   createBus,
   createDriver,
-  getBusByNumber
+  getBusByNumber,
+  getRoutes,
+  getBuses
 } from "../controllers/transport.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 import { allowRoles } from "../middlewares/role.middleware.js";
@@ -21,6 +23,18 @@ router.get(
   protect,
   allowRoles("STUDENT", "FACULTY"),
   getBusByNumber
+);
+router.get(
+  "/routes",
+  protect,
+  allowRoles("ADMIN"),
+  getRoutes
+);
+router.get(
+  "/buses",
+  protect,
+  allowRoles("ADMIN"),
+  getBuses
 );
 
 export default router;

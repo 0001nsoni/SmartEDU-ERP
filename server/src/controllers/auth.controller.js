@@ -10,36 +10,52 @@ export const register = async (req, res) => {
   try {
     const { name, email, password, role, institutionCode } = req.body;
 
-    if (!name || !email || !password || !role || !institutionCode) {
+    // Basic validation
+    if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const institution = await Institution.findOne({ code: institutionCode });
-    if (!institution) {
-      return res.status(404).json({ message: "Institution not found" });
-    }
-
+    // Check duplicate user
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    let institutionId = null;
+
+    // Institution required ONLY for non-super-admin users
+    if (role !== "SUPER_ADMIN") {
+      if (!institutionCode) {
+        return res.status(400).json({
+          message: "Institution code is required",
+        });
+      }
+
+      const institution = await Institution.findOne({ code: institutionCode });
+      if (!institution) {
+        return res.status(404).json({ message: "Institution not found" });
+      }
+
+      institutionId = institution._id;
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      institutionId: institution._id,
       name,
       email,
       password: hashedPassword,
-      role
+      role,
+      institutionId, // null for SUPER_ADMIN
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "User registered successfully",
-      userId: user._id
+      userId: user._id,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -51,7 +67,9 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password required" });
     }
 
     const user = await User.findOne({ email });
@@ -68,22 +86,23 @@ export const login = async (req, res) => {
       {
         userId: user._id,
         role: user.role,
-        institutionId: user.institutionId
+        institutionId: user.institutionId || null,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
 
-    res.json({
+    return res.json({
       message: "Login successful",
       token,
       user: {
         id: user._id,
         name: user.name,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };

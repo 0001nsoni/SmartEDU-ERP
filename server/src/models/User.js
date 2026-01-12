@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
     password: String,
     role: {
       type: String,
-      enum: ["SUPER_ADMIN", "ADMIN", "FACULTY", "STUDENT", "DRIVER"],
+      enum: ["SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "FACULTY", "STUDENT", "DRIVER"],
       required: true
     },
     status: { type: String, default: "ACTIVE" }

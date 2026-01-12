@@ -14,7 +14,8 @@ export const createHostel = async (req, res) => {
     const hostel = await Hostel.create({
       institutionId: req.user.institutionId,
       name,
-      type
+      type,
+      
     });
 
     res.status(201).json({
@@ -117,6 +118,19 @@ export const allocateRoom = async (req, res) => {
     await student.save();
 
     res.json({ message: "Room allocated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+export const getHostels = async (req, res) => {
+  try {
+    const hostels = await Hostel.find({
+      institutionId: req.user.institutionId
+    });
+
+    res.json({ hostels });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

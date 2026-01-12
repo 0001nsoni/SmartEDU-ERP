@@ -1,34 +1,25 @@
 import express from "express";
 import {
-  markStudentAttendance,
-  getMyAttendance,
-  markFacultyAttendance
+  markLectureAttendance,
+  markMentorAttendance
 } from "../controllers/attendance.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 import { allowRoles } from "../middlewares/role.middleware.js";
 
 const router = express.Router();
 
-// FACULTY
 router.post(
-  "/students",
+  "/lecture",
   protect,
   allowRoles("FACULTY"),
-  markStudentAttendance
-);
-router.post(
-  "/faculty",
-  protect,
-  allowRoles("FACULTY"),
-  markFacultyAttendance
+  markLectureAttendance
 );
 
-// STUDENT
-router.get(
-  "/me",
+router.post(
+  "/mentor",
   protect,
-  allowRoles("STUDENT"),
-  getMyAttendance
+  allowRoles("FACULTY"),
+  markMentorAttendance
 );
 
 export default router;

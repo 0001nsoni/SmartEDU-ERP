@@ -1,15 +1,36 @@
 import express from "express";
-import { createInstitution } from "../controllers/institution.controller.js";
+import {
+  createInstitution,
+  getAllInstitutions,
+  updateInstitutionStatus,
+} from "../controllers/institution.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 import { allowRoles } from "../middlewares/role.middleware.js";
 
 const router = express.Router();
 
+// Create institution
 router.post(
   "/",
   protect,
   allowRoles("SUPER_ADMIN"),
   createInstitution
+);
+
+// Get all institutions
+router.get(
+  "/",
+  protect,
+  allowRoles("SUPER_ADMIN"),
+  getAllInstitutions
+);
+
+// Enable / Disable institution
+router.patch(
+  "/:id/status",
+  protect,
+  allowRoles("SUPER_ADMIN"),
+  updateInstitutionStatus
 );
 
 export default router;

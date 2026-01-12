@@ -12,7 +12,7 @@ export const createNotice = async (req, res) => {
       institutionId: req.user.institutionId,
       title,
       message,
-      targetAudience,
+      targetAudience, // MUST match enum values exactly
       postedBy: req.user.userId,
       expiresAt
     });
@@ -31,26 +31,40 @@ export const createNotice = async (req, res) => {
  */
 export const getMyNotices = async (req, res) => {
   try {
-    let audience = ["ALL"];
+    const { role, institutionId, userId } = req.user;
 
-    if (req.user.role === "STUDENT") {
-      audience.push("STUDENTS");
+    let audiences = ["ALL"];
 
-      const student = await Student.findOne({
-        userId: req.user.userId
-      });
-
-      if (student?.hostelId) audience.push("HOSTELLERS");
-      if (student?.busId) audience.push("BUS_USERS");
+    // 🔑 ADMIN sees EVERYTHING
+    if (role === "ADMIN") {
+      audiences = [
+        "ALL",
+        "STUDENT",
+        "FACULTY",
+        "ADMIN",
+        "HOSTELLERS",
+        "BUS_USERS"
+      ];
     }
 
-    if (req.user.role === "FACULTY") {
-      audience.push("FACULTY");
+    // 🎓 STUDENT
+    else if (role === "STUDENT") {
+      audiences.push("STUDENT");
+
+      const student = await Student.findOne({ userId });
+
+      if (student?.hostelId) audiences.push("HOSTELLERS");
+      if (student?.busId) audiences.push("BUS_USERS");
+    }
+
+    // 👩‍🏫 FACULTY
+    else if (role === "FACULTY") {
+      audiences.push("FACULTY");
     }
 
     const notices = await Notice.find({
-      institutionId: req.user.institutionId,
-      targetAudience: { $in: audience },
+      institutionId,
+      targetAudience: { $in: audiences },
       $or: [
         { expiresAt: { $exists: false } },
         { expiresAt: { $gte: new Date() } }

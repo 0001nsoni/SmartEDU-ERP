@@ -7,17 +7,45 @@ const subjectSchema = new mongoose.Schema(
       ref: "Institution",
       required: true
     },
-    name: { type: String, required: true },
-    code: { type: String, required: true },
-    semester: { type: Number, required: true },
-    facultyId: {
+
+    courseId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Faculty",
+      ref: "Course",
+      required: true
+    },
+
+    name: {
+      type: String,
+      required: true
+    },
+
+    code: {
+      type: String,
+      required: true
+    },
+
+    year: {
+      type: Number,
+      required: true
+    },
+
+    semester: {
+      type: Number,
+      required: true
+    },
+
+    type: {
+      type: String,
+      enum: ["THEORY", "LAB"],
       required: true
     }
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Subject", subjectSchema);
+subjectSchema.index(
+  { institutionId: 1, courseId: 1, code: 1 },
+  { unique: true }
+);
 
+export default mongoose.model("Subject", subjectSchema);

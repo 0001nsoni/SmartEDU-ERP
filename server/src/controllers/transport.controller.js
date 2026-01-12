@@ -4,20 +4,58 @@ import Driver from "../models/Driver.js";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 
+
+/**
+ * GET ALL ROUTES (ADMIN)
+ */
+export const getRoutes = async (req, res) => {
+  try {
+    const routes = await Route.find({
+      institutionId: req.user.institutionId
+    }).sort({ createdAt: -1 });
+
+    res.json({ routes });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 /**
  * ADMIN → CREATE ROUTE
  */
 export const createRoute = async (req, res) => {
-  const { routeName, stops } = req.body;
+  try {
+    const { routeName, stops } = req.body;
 
-  const route = await Route.create({
-    institutionId: req.user.institutionId,
-    routeName,
-    stops
-  });
+    if (!routeName || !Array.isArray(stops) || stops.length < 2) {
+      return res.status(400).json({
+        message: "Route name and at least 2 stops required"
+      });
+    }
 
-  res.status(201).json({ routeId: route._id });
+    // 🔑 ADD ORDER HERE
+    const formattedStops = stops.map((stop, index) => ({
+      name: stop.name,
+      lat: stop.lat,
+      lng: stop.lng,
+      order: index + 1
+    }));
+
+    const route = await Route.create({
+      institutionId: req.user.institutionId,
+      routeName,
+      stops: formattedStops
+    });
+
+    res.status(201).json({
+      message: "Route created successfully",
+      route
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
+
 
 /**
  * ADMIN → CREATE BUS
@@ -78,4 +116,21 @@ export const getBusByNumber = async (req, res) => {
   }
 
   res.json({ bus });
+};
+export const getBuses = async (req, res) => {
+  try {
+    const buses = await Bus.find({
+      institutionId: req.user.institutionId
+    })
+      .populate("routeId", "routeName stops")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      buses
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
 };
