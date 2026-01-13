@@ -1,88 +1,79 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import StatCard from "../../components/ui/StatCard";
-
 import FacultyTimetable from "../../components/faculty/FacultyTimetable";
 import HostelApprovals from "../../components/faculty/HostelApprovals";
-
 import api from "../../services/api";
 
 export default function FacultyDashboard() {
-  const [todayLectures, setTodayLectures] = useState([]);
-  const [pendingLeaves, setPendingLeaves] = useState(0);
-  const [noticesCount, setNoticesCount] = useState(0);
-  const [isMentor, setIsMentor] = useState(false);
+  const [data, setData] = useState(null);
 
   useEffect(() => {
-    const loadDashboard = async () => {
-      /* ==========================
-         TODAY'S LECTURES
-      ========================== */
-      const day = new Date()
-        .toLocaleString("en-US", { weekday: "long" })
-        .toUpperCase();
-
-      const lecturesRes = await api.get("/lectures");
-      const today = lecturesRes.data.lectures.filter(
-        (l) => l.day === day
-      );
-
-      setTodayLectures(today);
-
-      /* ==========================
-         HOSTEL LEAVES (MENTOR / WARDEN)
-      ========================== */
-      try {
-        const leaveRes = await api.get("/hostel-leaves/pending");
-        setPendingLeaves(leaveRes.data.count || 0);
-        setIsMentor(true);
-      } catch {
-        setIsMentor(false);
-      }
-
-      /* ==========================
-         NOTICES
-      ========================== */
-      const noticeRes = await api.get("/notices/my");
-      setNoticesCount(noticeRes.data.notices.length);
-    };
-
-    loadDashboard();
+    api
+      .get("/faculty/dashboard")
+      .then(res => {
+        console.log("Faculty dashboard data:", res.data);
+        setData(res.data);
+      })
+      .catch(err => {
+        console.error("Faculty dashboard error:", err);
+      });
   }, []);
+
+
+  if (!data) {
+    return (
+      <DashboardLayout>
+        <p className="text-slate-500">Loading dashboard...</p>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-      {/* =======================
-          TOP STATS
-      ======================= */}
+      {/* TOP STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Today's Lectures"
-          value={todayLectures.length}
+          value={data.todayLectures.length}
         />
 
-        {isMentor && (
+        {data.facultyType.includes("WARDEN") && (
           <StatCard
             title="Pending Leaves"
-            value={pendingLeaves}
+            value={data.pendingLeaves}
           />
         )}
 
-        <StatCard title="Notices" value={noticesCount} />
+        <StatCard
+          title="Notices"
+          value={data.noticesCount}
+        />
 
         <StatCard
           title="Role"
-          value={isMentor ? "Mentor" : "Faculty"}
+          value={data.isMentor ? "Mentor" : "Faculty"}
         />
       </div>
 
-      {/* =======================
-          MAIN CONTENT
-      ======================= */}
+      {/* MAIN */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <FacultyTimetable lectures={todayLectures} />
+        {data.isMentor && data.mentorDetails && (
+          <div className="bg-white border rounded-xl p-4 mb-6">
+            <h3 className="font-semibold mb-2">Mentor Class</h3>
+            <p className="text-slate-700 text-sm">
+              {data.mentorDetails.course?.name} |
+              Year {data.mentorDetails.year} |
+              Sem {data.mentorDetails.semester} |
+              Section {data.mentorDetails.section}
+            </p>
+          </div>
+        )}
 
-        {isMentor && <HostelApprovals />}
+        <FacultyTimetable lectures={data.todayLectures} />
+        {data.facultyType.includes("WARDEN") && (
+          <HostelApprovals />
+        )}
       </div>
     </DashboardLayout>
   );

@@ -1,6 +1,9 @@
+import Student from "../models/Student.js";
+import Holiday from "../models/Holiday.js";
 import MentorAttendance from "../models/MentorAttendance.js";
 import Lecture from "../models/Lecture.js";
 import LectureAttendance from "../models/LectureAttendance.js";
+import Faculty from "../models/Faculty.js";
 
 /**
  * MARK LECTURE ATTENDANCE (FACULTY)
@@ -11,40 +14,48 @@ export const markLectureAttendance = async (req, res) => {
 
     if (!lectureId || !date || !presentStudents) {
       return res.status(400).json({
-        message: "All fields are required"
+        message: "All fields are required",
       });
     }
 
     const lecture = await Lecture.findById(lectureId);
     if (!lecture) {
       return res.status(404).json({
-        message: "Lecture not found"
+        message: "Lecture not found",
       });
     }
 
     // Ensure faculty owns the lecture
-    if (lecture.facultyId.toString() !== req.user.userId) {
+    const faculty = await Faculty.findOne({
+      userId: req.user.userId,
+    });
+
+    if (!faculty || !lecture.facultyId.equals(faculty._id)) {
       return res.status(403).json({
-        message: "Not authorized to mark this lecture"
+        message: "Not authorized to mark this lecture",
       });
     }
 
-    const attendance = await LectureAttendance.create({
-      institutionId: req.user.institutionId,
-      lectureId,
-      date,
-      facultyId: req.user.userId,
-      presentStudents
-    });
+    const attendance = await LectureAttendance.findOneAndUpdate(
+      { lectureId, date },
+      {
+        institutionId: req.user.institutionId,
+        lectureId,
+        date,
+        facultyId: faculty._id,
+        presentStudents,
+      },
+      { upsert: true, new: true }
+    );
 
     res.status(201).json({
       message: "Attendance marked successfully",
-      attendance
+      attendance,
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({
-        message: "Attendance already marked for this lecture"
+        message: "Attendance already marked for this lecture",
       });
     }
     res.status(500).json({ message: error.message });
@@ -56,24 +67,12 @@ export const markLectureAttendance = async (req, res) => {
  */
 export const markMentorAttendance = async (req, res) => {
   try {
-    const {
-      courseId,
-      year,
-      section,
-      date,
-      session,
-      presentStudents
-    } = req.body;
+    const { courseId, year, section, date, session, presentStudents } =
+      req.body;
 
-    if (
-      !courseId ||
-      !year ||
-      !section ||
-      !date ||
-      !session
-    ) {
+    if (!courseId || !year || !section || !date || !session) {
       return res.status(400).json({
-        message: "All fields are required"
+        message: "All fields are required",
       });
     }
 
@@ -85,19 +84,91 @@ export const markMentorAttendance = async (req, res) => {
       mentorId: req.user.userId,
       date,
       session,
-      presentStudents
+      presentStudents,
     });
 
     res.status(201).json({
       message: "Mentor attendance marked",
-      attendance
+      attendance,
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({
-        message: "Attendance already marked"
+        message: "Attendance already marked",
       });
     }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * GET LECTURE ATTENDANCE PERCENTAGE (STUDENT)
+ */
+export const getLectureAttendancePercentage = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
+
+    // 1️⃣ Get lectures of student's class
+    const lectures = await Lecture.find({
+      institutionId: student.institutionId,
+      courseId: student.courseId,
+      year: student.year,
+      section: student.section,
+    });
+
+    const lectureIds = lectures.map((l) => l._id);
+
+    // 2️⃣ Get lecture attendance records
+    const attendances = await LectureAttendance.find({
+      lectureId: { $in: lectureIds },
+    });
+
+    // 3️⃣ Get holidays
+    const holidays = await Holiday.find({
+      institutionId: student.institutionId,
+    });
+
+    const isHoliday = (date) =>
+      holidays.some(
+        (h) => date >= h.startDate && date <= h.endDate
+      );
+
+    let totalLectures = 0;
+    let attendedLectures = 0;
+
+    attendances.forEach((a) => {
+      const d = new Date(a.date);
+
+      // ❌ Skip Sunday
+      if (d.getDay() === 0) return;
+
+      // ❌ Skip holiday
+      if (isHoliday(d)) return;
+
+      totalLectures++;
+
+      if (a.presentStudents.includes(student._id)) {
+        attendedLectures++;
+      }
+    });
+
+    res.json({
+      type: "LECTURE",
+      totalLectures,
+      attendedLectures,
+      percentage:
+        totalLectures === 0
+          ? 0
+          : ((attendedLectures / totalLectures) * 100).toFixed(2),
+    });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };

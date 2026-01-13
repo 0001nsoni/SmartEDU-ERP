@@ -7,7 +7,7 @@ import { allowRoles } from "../middlewares/role.middleware.js";
 const router = express.Router();
 // ADMIN
 router.post("/", protect, allowRoles("ADMIN"), createStudent);
-router.get("/", protect, allowRoles("ADMIN"), getAllStudents);
+router.get("/", protect, allowRoles("ADMIN","FACULTY"), getAllStudents);
 
 // STUDENT
 router.get("/me", protect, allowRoles("STUDENT"), getMyProfile);

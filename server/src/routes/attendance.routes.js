@@ -1,3 +1,4 @@
+import { getLectureAttendancePercentage } from "../controllers/attendance.controller.js";
 import express from "express";
 import {
   markLectureAttendance,
@@ -20,6 +21,13 @@ router.post(
   protect,
   allowRoles("FACULTY"),
   markMentorAttendance
+);
+
+router.get(
+  "/lecture/percentage/:studentId",
+  protect,
+  allowRoles("STUDENT", "ADMIN"),
+  getLectureAttendancePercentage
 );
 
 export default router;

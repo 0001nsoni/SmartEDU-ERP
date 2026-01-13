@@ -2,6 +2,7 @@ import express from "express";
 import {
   createFaculty,
   getAllFaculty,
+  getFacultyDashboard,
   getMyFacultyProfile
 } from "../controllers/faculty.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
@@ -15,5 +16,10 @@ router.get("/", protect, allowRoles("ADMIN"), getAllFaculty);
 
 // FACULTY
 router.get("/me", protect, allowRoles("FACULTY"), getMyFacultyProfile);
-
+router.get(
+  "/dashboard",
+  protect,
+  allowRoles("FACULTY"),
+  getFacultyDashboard
+)
 export default router;
