@@ -8,68 +8,76 @@ export const createNotice = async (req, res) => {
   try {
     const { title, message, targetAudience, expiresAt } = req.body;
 
+    if (!title || !message || !targetAudience) {
+      return res.status(400).json({
+        message: "Title, message and target audience are required"
+      });
+    }
+
+    // FACULTY restriction
+    if (req.user.role === "FACULTY") {
+      if (!["FACULTY", "STUDENT"].includes(targetAudience)) {
+        return res.status(403).json({
+          message: "Faculty can only post for Faculty or Students"
+        });
+      }
+    }
+
     const notice = await Notice.create({
       institutionId: req.user.institutionId,
       title,
       message,
-      targetAudience, // MUST match enum values exactly
+      targetAudience,
       postedBy: req.user.userId,
       expiresAt
     });
 
     res.status(201).json({
       message: "Notice created successfully",
-      noticeId: notice._id
+      notice
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+
+
 /**
  * GET NOTICES (ROLE-BASED VISIBILITY)
  */
 export const getMyNotices = async (req, res) => {
   try {
-    const { role, institutionId, userId } = req.user;
-
-    let audiences = ["ALL"];
-
-    // 🔑 ADMIN sees EVERYTHING
-    if (role === "ADMIN") {
-      audiences = [
-        "ALL",
-        "STUDENT",
-        "FACULTY",
-        "ADMIN",
-        "HOSTELLERS",
-        "BUS_USERS"
-      ];
-    }
-
-    // 🎓 STUDENT
-    else if (role === "STUDENT") {
-      audiences.push("STUDENT");
-
-      const student = await Student.findOne({ userId });
-
-      if (student?.hostelId) audiences.push("HOSTELLERS");
-      if (student?.busId) audiences.push("BUS_USERS");
-    }
-
-    // 👩‍🏫 FACULTY
-    else if (role === "FACULTY") {
-      audiences.push("FACULTY");
-    }
-
-    const notices = await Notice.find({
-      institutionId,
-      targetAudience: { $in: audiences },
+    let filter = {
+      institutionId: req.user.institutionId,
       $or: [
         { expiresAt: { $exists: false } },
         { expiresAt: { $gte: new Date() } }
       ]
-    }).sort({ createdAt: -1 });
+    };
+
+    // 🔥 ADMIN sees EVERYTHING
+    if (req.user.role === "ADMIN" || req.user.role === "SUPER_ADMIN") {
+      // no audience filter
+    }
+
+    // 🔥 FACULTY sees ALL + FACULTY + STUDENTS
+    else if (req.user.role === "FACULTY") {
+      filter.targetAudience = {
+        $in: ["ALL", "FACULTY", "STUDENTS"]
+      };
+    }
+
+    // 🔥 STUDENT sees ALL + STUDENTS
+    else if (req.user.role === "STUDENT") {
+      filter.targetAudience = {
+        $in: ["ALL", "STUDENTS"]
+      };
+    }
+
+    const notices = await Notice.find(filter)
+      .sort({ createdAt: -1 })
+      .populate("postedBy", "name role");
 
     res.json({ notices });
   } catch (error) {

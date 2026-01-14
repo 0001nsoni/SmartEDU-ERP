@@ -5,34 +5,35 @@ const busSchema = new mongoose.Schema(
     institutionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Institution",
-      required: true
+      required: true,
     },
     busNumber: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     routeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Route",
-      required: true
+      required: true,
     },
     driverId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Driver"
+      ref: "Driver",
+      default: null,
     },
     capacity: { type: Number, default: 40 },
     students: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Student"
-      }
+        ref: "Student",
+      },
     ],
     currentLocation: {
       lat: Number,
       lng: Number,
-      updatedAt: Date
-    }
+      updatedAt: Date,
+    },
   },
   { timestamps: true }
 );

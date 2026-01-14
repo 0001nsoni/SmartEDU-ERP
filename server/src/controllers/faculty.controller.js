@@ -129,7 +129,8 @@ export const getFacultyDashboard = async (req, res) => {
     let mentorDetails = null;
     if (mentor) {
       mentorDetails = {
-        course: mentor.courseId,
+        courseId: mentor.courseId._id,
+        course: mentor.courseId, // populated (name, code)
         year: mentor.year,
         semester: mentor.semester,
         section: mentor.section,

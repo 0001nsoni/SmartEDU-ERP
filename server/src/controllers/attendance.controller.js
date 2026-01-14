@@ -172,3 +172,66 @@ export const getLectureAttendancePercentage = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+/**
+ * GET MENTOR ATTENDANCE PERCENTAGE (STUDENT)
+ */
+export const getMentorAttendancePercentage = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found"
+      });
+    }
+
+    // Mentor attendance applies to student's class
+    const attendances = await MentorAttendance.find({
+      institutionId: student.institutionId,
+      courseId: student.courseId,
+      year: student.year,
+      section: student.section
+    });
+
+    const holidays = await Holiday.find({
+      institutionId: student.institutionId
+    });
+
+    const isHoliday = (date) =>
+      holidays.some(
+        (h) => date >= h.startDate && date <= h.endDate
+      );
+
+    let totalSessions = 0;
+    let attendedSessions = 0;
+
+    attendances.forEach((a) => {
+      const d = new Date(a.date);
+
+      // Skip Sunday
+      if (d.getDay() === 0) return;
+
+      // Skip holiday
+      if (isHoliday(d)) return;
+
+      totalSessions++;
+
+      if (a.presentStudents.includes(student._id)) {
+        attendedSessions++;
+      }
+    });
+
+    res.json({
+      type: "MENTOR",
+      totalSessions,
+      attendedSessions,
+      percentage:
+        totalSessions === 0
+          ? 0
+          : ((attendedSessions / totalSessions) * 100).toFixed(2)
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

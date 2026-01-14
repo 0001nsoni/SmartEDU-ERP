@@ -3,10 +3,21 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 import StatCard from "../../components/ui/StatCard";
 import FacultyTimetable from "../../components/faculty/FacultyTimetable";
 import HostelApprovals from "../../components/faculty/HostelApprovals";
+import FacultyNotices from "../../components/faculty/FacultyNotices";
+import CreateNotice from "../../components/faculty/CreateNotice";
+import MentorAttendance from "../../components/faculty/MentorAttendance";
+
 import api from "../../services/api";
+
 
 export default function FacultyDashboard() {
   const [data, setData] = useState(null);
+  const [facultyAttendance, setFacultyAttendance] = useState(null);
+
+  useEffect(() => {
+    api.get("/faculty-attendance/percentage")
+      .then(res => setFacultyAttendance(res.data));
+  }, []);
 
   useEffect(() => {
     api
@@ -44,6 +55,15 @@ export default function FacultyDashboard() {
             value={data.pendingLeaves}
           />
         )}
+        <StatCard
+          title="My Attendance"
+          value={
+            facultyAttendance
+              ? `${facultyAttendance.percentage}%`
+              : "—"
+          }
+        />
+
 
         <StatCard
           title="Notices"
@@ -58,6 +78,16 @@ export default function FacultyDashboard() {
 
       {/* MAIN */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <button
+          onClick={async () => {
+            await api.post("/faculty-attendance/mark");
+            alert("Attendance marked");
+          }}
+          className="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          Mark Today Present
+        </button>
+
         {data.isMentor && data.mentorDetails && (
           <div className="bg-white border rounded-xl p-4 mb-6">
             <h3 className="font-semibold mb-2">Mentor Class</h3>
@@ -67,7 +97,9 @@ export default function FacultyDashboard() {
               Sem {data.mentorDetails.semester} |
               Section {data.mentorDetails.section}
             </p>
+
           </div>
+
         )}
 
         <FacultyTimetable lectures={data.todayLectures} />
@@ -75,6 +107,20 @@ export default function FacultyDashboard() {
           <HostelApprovals />
         )}
       </div>
+      <div className="space-y-6">
+        {data.isMentor && data.mentorDetails && (
+          <MentorAttendance mentorDetails={data.mentorDetails} />
+        )}
+
+        {data.facultyType.includes("WARDEN") && (
+          <HostelApprovals />
+        )}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        <CreateNotice isMentor={data.isMentor} />
+        <FacultyNotices />
+      </div>
+
     </DashboardLayout>
   );
 }

@@ -27,9 +27,8 @@ import subjectRoutes from "./src/routes/subject.routes.js";
 import lectureRoutes from "./src/routes/lecture.routes.js";
 import mentorRoutes from "./src/routes/mentor.routes.js";
 import holidayRoutes from "./src/routes/holiday.routes.js";
-
-
-
+import facultyAttendanceRoutes from "./src/routes/facultyAttendance.routes.js";
+import driverRoutes from "./src/routes/driver.routes.js";
 
 // ================= MODELS =================
 import Bus from "./src/models/Bus.js";
@@ -65,11 +64,8 @@ app.use("/api/subjects", subjectRoutes);
 app.use("/api/lectures", lectureRoutes);
 app.use("/api/mentors", mentorRoutes);
 app.use("/api/holidays", holidayRoutes);
-
-
-
-
-
+app.use("/api/faculty-attendance", facultyAttendanceRoutes);
+app.use("/api/drivers", driverRoutes);
 
 // ================= SOCKET.IO =================
 const io = new Server(server, {
@@ -82,7 +78,7 @@ io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
 
   /**
-   * STUDENT / FACULTY joins a bus room
+   * STUDENT / ADMIN / FACULTY joins a bus room
    */
   socket.on("joinBus", (busId) => {
     if (!busId) return;
@@ -94,25 +90,30 @@ io.on("connection", (socket) => {
    * DRIVER sends live location
    */
   socket.on("bus:location", async ({ busId, lat, lng }) => {
-    if (!busId || !lat || !lng) return;
+    if (!busId || lat == null || lng == null) {
+      return;
+    }
 
     try {
-      // Save last known location
-      await Bus.findByIdAndUpdate(busId, {
-        currentLocation: {
-          lat,
-          lng,
-          updatedAt: new Date()
-        }
-      });
+      const bus = await Bus.findById(busId);
+      if (!bus) return;
 
-      // Emit only to users watching this bus
+      bus.currentLocation = {
+        lat,
+        lng,
+        updatedAt: new Date()
+      };
+      await bus.save();
+
+      // Broadcast only to viewers of this bus
       io.to(`bus_${busId}`).emit("bus:location:update", {
         lat,
-        lng
+        lng,
+        updatedAt: bus.currentLocation.updatedAt
       });
+
     } catch (error) {
-      console.error("Error updating bus location:", error.message);
+      console.error("🚨 Bus location error:", error.message);
     }
   });
 

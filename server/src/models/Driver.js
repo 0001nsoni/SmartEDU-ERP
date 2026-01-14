@@ -7,17 +7,39 @@ const driverSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
+
     institutionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Institution",
       required: true
     },
-    licenseNumber: { type: String, required: true },
+
+    name: {
+      type: String,
+      required: true
+    },
+
+    phone: {
+      type: String,
+      required: true
+    },
+
+    licenseNumber: {
+      type: String,
+      required: true,
+      unique: true
+    },
+
     assignedBusId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Bus"
+      ref: "Bus",
+      default: null
     },
-    isActive: { type: Boolean, default: true }
+
+    isActive: {
+      type: Boolean,
+      default: true
+    }
   },
   { timestamps: true }
 );
